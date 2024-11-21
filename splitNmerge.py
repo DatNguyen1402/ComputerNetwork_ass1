@@ -22,6 +22,8 @@ def merge_pieces(piece_files, output_file_path):
                 output_file.write(piece.read())
     print(f"Merged {len(piece_files)} pieces into {output_file_path}")
 
+
+
 # Example usage
 if __name__ == "__main__":
     # Split a file into pieces
