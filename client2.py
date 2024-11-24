@@ -1,101 +1,115 @@
 import os
 import socket
+import os
+import threading
+import math
+from splitNmerge import split_file_into_pieces
+from trackfile import get_files_and_sizes
+from metainfo import split_file_into_pieces
+from metainfo import get_file_piece
+from metainfo import print_metainfo
 
 
-class client:
-    def __init__(self, host, port, ):
-        self.host = host
-        self.port = port
-        self.socket = None
-
-
-    def fetch(self,file_name):
-        # connect to the the server
-        # self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        # socket.connect((host, port))
-        request = f"find {file_name}"
-        self.socket.send(request.encode("utf-8"))
-        
-        #maybe should response the peer have the file with the peer info and the file info(the num of piece to start handle)
-        response = self.socket.recv(1024).decode('utf-8')
-        
-        # start dowload use the peer list and piece list
-        # create thread for each peer to download
-        # maybe note the flag ? to decide the piece have downloaded
-        
-        # send request to the peer 
-        
-        # recieve the response (the data of piece)
-        
-        
-        print(f"Server response : {response}")
-
-
-
-
+# client 2 (peer2) 
+host = 'localhost'
+port = 5002
+name = 'client 2'
+file_dir = "../src/clients/client2/origin"
+file_share = []
 
     
-    def publish(self,file_name):
-        command ={
-            'action' : 'publish'
-        }
+def check_file_path(file_path):
+    print(f"Checking in the file path {file_path}")
+    if not os.path.isdir(file_path):
+        print("The provided path is not a valid directory.")
+        return -1
+    else:
+        files = [f for f in os.listdir(file_path) if os.path.isfile(os.path.join(file_path, f))]
         
-        request = f"publish {file_name}"
-        self.socket.send(request.encode("utf-8"))
-        response = self.socket.recv(1024).decode('utf-8')
-        print(f"Server response : {response}")
+        if files:
+            print("Files in the directory:")
+            for filename in files:
+                print(filename)
+            return 1  
+        else:
+            print("Directory is empty. No files found.")
+            return 0
+
+def check_file(file_path, file_name):
+    print(f"Check if {file_name} in path {file_path}")
+    flag = 0
+    if not os.path.isdir(file_path):
+        print("The provided path is not a valid directory.")
+        return -1
+    else:
+        files = [f for f in os.listdir(file_path) if os.path.isfile(os.path.join(file_path, f))]
+        
+        if files:
+            for filename in files:
+                if file_name == filename:
+                    flag = 1    
+    if flag == 0:
+        print("File not found")
+    if flag == 1:
+        print("File found in path")
+    return flag
+
+def check_file_share(file_name):
+    for i, metainfo in enumerate(file_share): 
+        if metainfo['filename'] == file_name:
+            print(f'File {file_name} found at index {i}.')
+            return True 
+    print(f'File {file_name} not found.')
+    return False 
+
+
+
+
+def generate_metainfo(file_name, file_path):
+    files = [f for f in os.listdir(file_path) if os.path.isfile(os.path.join(file_path, f))]
+    metainfo = None
+
+    if files:
+        for filename in files:
+            if file_name == filename:
+                # Get the file size using os.path.getsize
+                file_path = os.path.join(file_path, filename)
+                filesize = os.path.getsize(file_path)
+                
+                # Calculate the number of pieces, rounding up if there's a remainder
+                num_piece = math.ceil(filesize / (512 * 1024))
+                
+                metainfo = {
+                    'filename': filename,
+                    'filesize': filesize,
+                    'num_piece': num_piece
+                }
+                
+    return metainfo
+
+
+
+def publish(file_name):
+    print(f"Publish {file_name} to the network")
+    if check_file(file_dir, file_name) == 1:
+        if check_file_share(file_name) == 1:
+            print("File have been there")
+        else:
+            # logic to update the file to network, need to update the metainfo?
+            print(f"Pulish {file_name} successfully")
+            # logic to make the metadata here
+            metainfo = generate_metainfo(file_name, file_dir)
+            file_share.append(metainfo)
+    else:
+        print("File not found in directory, cannot publish")
     
-    def connect_to_peer(self, host, port):
-        try:
-            self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self.socket.connect((host, port))
-            print(f"host({self.host}) connect to host:{host} and port:{port}")
-            request = "dowload"
-            self.socket.send(request.encode())
-            response = self.socket.recv(1024).decode()
-            print(f"recive response :{response}")
-        except Exception as e:
-            print(f"Connection failed: {e}")   
-        finally:
-            self.socket.close()  
-            
-    def response_to_peer(self):
-        try:
-            # Create a socket to listen for incoming connections
-            self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self.socket.bind((self.host, self.port))
-            self.socket.listen(5)  # Listen for incoming connections
-            print(f"Listening for connections on {self.host}:{self.port}...")
 
-            while True:
-                # Accept a connection from a peer
-                client_socket, addr = self.socket.accept()
-                print(f"Connected by {addr}")
 
-                # Receive a request from the connected peer
-                request = client_socket.recv(1024).decode()
-                print(f"Received request: {request}")
 
-                # Process the request (in this case, we handle a "download" request)
-                if request == "download":
-                    # Send a response (this could be the file content or a message)
-                    response = "Here is the file content"  # Example response
-                    client_socket.send(response.encode())
-                    print(f"Sent response: {response}")
-
-                client_socket.close()  # Close the connection to this peer
-
-        except Exception as e:
-            print(f"Error in response handling: {e}")
-        finally:
-            self.socket.close()  # Ensure the socket is closed after use
-        
         
 if __name__ == "__main__":
 
-    
-    client2 = client('localhost', 5002)
-
-
-    client2.response_to_peer()
-
+    publish('Chapter_3.pdf')
+    publish('Chapter_3.pdf')
+ 
+    #print_metainfo(split_file_into_pieces(f"{file_dir}/eBook.txt",500000))

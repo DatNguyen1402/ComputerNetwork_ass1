@@ -25,6 +25,3 @@ def get_files_and_sizes(folder_path):
         
 
 
-if __name__ == "__main__":
-    folder_path = "D:\HCMUT\HK241\Computer Architecture slide\Lab\Assignment"  # Replace with your folder path
-    get_files_and_sizes(folder_path)

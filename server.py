@@ -9,6 +9,7 @@ class PeerInfo:
         self.name = name
         self.file_share = []
         
+        
     def add_file(self, filename):
         if filename not in self.file_share:
             self.file_share.append(filename)
@@ -29,6 +30,11 @@ def add_or_update_peer(name, filename):
 def show_peers():
     for peer in peer_list:
         print(peer)
+
+
+
+
+
 
 
 def handle_client(client_socket, client_address):
@@ -69,12 +75,6 @@ def server(host, port):
         
     finally:
         server_socket.close()
-
-
-
-
-
-        
 
 
 if __name__ == "__main__":
