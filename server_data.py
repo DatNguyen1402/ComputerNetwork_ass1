@@ -23,8 +23,21 @@ def add_shared_file(peer_id, file_name):
 
 def get_peers_for_file(file_name):
     peers_have_file = []
+    
+    # Kiểm tra file có trong file_sharing hay không
     if file_name in file_sharing:
-        peers_have_file.extend(file_sharing[file_name])  # Thêm các peer vào danh sách
+        peer_ids = file_sharing[file_name]
+        
+        # Lấy thông tin chi tiết của từng peer dựa trên peer_id
+        for peer_id in peer_ids:
+            if peer_id in peerlist:
+                peer_info = {
+                    'peer_id': peer_id,
+                    'peer_name': peerlist[peer_id]['peer_name'],
+                    'peer_port': peerlist[peer_id]['peer_port']
+                }
+                peers_have_file.append(peer_info)
+    
     return peers_have_file
 
 def remove_peer(peer_id):

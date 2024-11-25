@@ -52,15 +52,16 @@ def handle_client(client_socket, client_address):
                 metainfo = data.get('metainfo')
                 if not metainfo:
                     peer_have_file = get_peers_for_file(file_name)
+                    
                     client_socket.sendall(json.dumps(peer_have_file).encode()+ b'\n')
 
 
                 else:
                     read_metainfo(metainfo)
                 
-                response = 'file been fetch '
+                # response = 'file been fetch '
                 
-                client_socket.sendall(response.encode("utf-8"))  
+                # client_socket.sendall(response.encode("utf-8"))  
                                   
     except Exception as e:
         print(f"Error with {client_address}: {e}")
