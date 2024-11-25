@@ -10,7 +10,7 @@ from metainfo import generate_metainfo
 
 host = 'localhost'
 id = 2
-port = 5002
+port = 6002
 name = 'client 2'
 file_dir = "../src/clients/client2/origin"
 file_share = []     #store filename only
@@ -53,26 +53,20 @@ def check_file(file_path, file_name):
     return flag
 
 def check_file_share(file_name):
-    for i, metainfo in enumerate(file_share): 
-        if metainfo['filename'] == file_name:
-            print(f'File {file_name} found at index {i}.')
-            return True 
-    print(f'File {file_name} not sharing yet.')
-    return False 
+    for i in file_share: 
+        if i == file_name:
+            return 1 
+    return 0 
 
 
 
-def publish(file_name):
+def publish(sock, file_name):
     print(f"Publish {file_name} to the network")
     if check_file(file_dir, file_name) == 1:
         if check_file_share(file_name) == 1:
             print("File have been there")
+            return
         else:
-            # logic to update the file to network, need to update the metainfo?
-            # connect to the server and announce that i have the file
-            client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            client_socket.connect(('localhost', 5000)) #host = tracker host, port = 5000
-            
             metaifo = generate_metainfo(os.path.join(file_dir, file_name), 512*1024)
             message = {
             'action' : 'publish',
@@ -82,9 +76,12 @@ def publish(file_name):
             'file_name': file_name,
             'metainfo' : metaifo
             }
-            client_socket.sendall(json.dumps(message).encode("utf-8") + b'\n')
-            print(f"Pulish {file_name} successfully")
-
+            sock.sendall(json.dumps(message).encode("utf-8") + b'\n')
+            
+            response = sock.recv(4096).decode("utf-8")
+            file_share.append(file_name)
+            print(response)
+            return        
     else:
         print("File not found in directory, cannot publish")
         
@@ -95,31 +92,37 @@ def connect_to_server(server_host, server_port):
         'action' : 'introduce',
         'peer_id': id,
         'peer_name': name,
-        'peer_port': port
+        'peer_port': port,
     }
     sock.sendall(json.dumps(message).encode() + b'\n')
     return sock
         
-def publish_piece_file(sock,peers_port,file_name,file_size, piece_hash,piece_size,num_order_in_file):
-    peers_hostname = socket.gethostname()
-    command = {
-        "action": "publish",
-        "peers_port": peers_port,
-        "peers_hostname":peers_hostname,
-        "file_name":file_name,
-        "file_size":file_size,
-        "piece_hash":piece_hash,
-        "piece_size":piece_size,
-        "num_order_in_file":num_order_in_file,
-    }
-    # shared_piece_files_dir.append(command)
-    sock.sendall(json.dumps(command).encode() + b'\n')
-    response = sock.recv(4096).decode()
-    print(response)
     
-def fetch(filename):
+def fetch(sock, file_data):    #send to server
     # this request the tracker to have peerlist {type: request_file, filename : filename}
+    if isinstance(file_data, str):
+        file_name = file_data
+        metainfo = None
+        print(f"Fetch {file_name} from peer {name}")
     
+    elif isinstance(file_data, dict):
+        file_name = file_data.get('filename')
+        metainfo = file_data
+        print(f"Fetch file using metainfo {metainfo}")
+    
+    message ={
+        'action' : 'fetch',
+        'peer_id': id,
+        'peer_name': name,
+        'peer_port': port,
+        'file_name': file_name,
+        'metainfo' : metainfo
+    }
+    
+    sock.sendall(json.dumps(message).encode('utf-8') + b'\n')
+    
+    response = sock.recv(4096).decode("utf-8")
+    print(response)
     # recieve the response from the tracker {num_peer: num, peer_list:[{host: , port: }] }
     # if num =0 -> no peer have file
     # if num>0 -> start dowload
@@ -132,17 +135,18 @@ def fetch(filename):
     # send request to peer {type: request_piece, filename, piece_order}
     
     # recieve the data, write to the 
-    pass
-
 
         
 if __name__ == "__main__":
     server_host = 'localhost'
     server_port = 5000
     
-    connect_to_server(server_host, server_port)
-    publish('eBook.txt')
-    # publish('Chapter_3.pdf')
-    # publish('Chapter_3.pdf')
+    sock = connect_to_server(server_host, server_port)
+    
+
+    publish(sock, 'eBook.txt')
+    fetch(sock, 'eBook.txt')
+    fetch(sock, 'eBook.txt')
+
  
     #print_metainfo(split_file_into_pieces(f"{file_dir}/eBook.txt",500000))

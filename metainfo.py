@@ -58,12 +58,3 @@ def read_metainfo(metainfo):
     num_pieces = len(info['pieces']) // 40  # 40 ký tự hex = 20 byte mỗi piece
     print(f"Number of pieces: {num_pieces}")
 
-# Test đọc metainfo
-# Test
-metainfo = generate_metainfo("D:\HCMUT\HK241\ComputerNetwork\Ass1\src\clients\client2\origin\eBook.txt", 512*1024)
-
-
-
-
-print(metainfo)
-read_metainfo(metainfo)
