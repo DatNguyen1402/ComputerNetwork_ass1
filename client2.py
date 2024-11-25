@@ -3,19 +3,17 @@ import socket
 import os
 import threading
 import math
-from splitNmerge import split_file_into_pieces
-from trackfile import get_files_and_sizes
-from metainfo import split_file_into_pieces
-from metainfo import get_file_piece
-from metainfo import print_metainfo
-
+import json
+from metainfo import generate_metainfo
 
 # client 2 (peer2) 
+
 host = 'localhost'
+id = 2
 port = 5002
 name = 'client 2'
 file_dir = "../src/clients/client2/origin"
-file_share = []
+file_share = []     #store filename only
 
     
 def check_file_path(file_path):
@@ -59,33 +57,8 @@ def check_file_share(file_name):
         if metainfo['filename'] == file_name:
             print(f'File {file_name} found at index {i}.')
             return True 
-    print(f'File {file_name} not found.')
+    print(f'File {file_name} not sharing yet.')
     return False 
-
-
-
-
-def generate_metainfo(file_name, file_path):
-    files = [f for f in os.listdir(file_path) if os.path.isfile(os.path.join(file_path, f))]
-    metainfo = None
-
-    if files:
-        for filename in files:
-            if file_name == filename:
-                # Get the file size using os.path.getsize
-                file_path = os.path.join(file_path, filename)
-                filesize = os.path.getsize(file_path)
-                
-                # Calculate the number of pieces, rounding up if there's a remainder
-                num_piece = math.ceil(filesize / (512 * 1024))
-                
-                metainfo = {
-                    'filename': filename,
-                    'filesize': filesize,
-                    'num_piece': num_piece
-                }
-                
-    return metainfo
 
 
 
@@ -96,20 +69,80 @@ def publish(file_name):
             print("File have been there")
         else:
             # logic to update the file to network, need to update the metainfo?
+            # connect to the server and announce that i have the file
+            client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            client_socket.connect(('localhost', 5000)) #host = tracker host, port = 5000
+            
+            metaifo = generate_metainfo(os.path.join(file_dir, file_name), 512*1024)
+            message = {
+            'action' : 'publish',
+            'peer_id': id,
+            'peer_name': name,
+            'peer_port': port,
+            'file_name': file_name,
+            'metainfo' : metaifo
+            }
+            client_socket.sendall(json.dumps(message).encode("utf-8") + b'\n')
             print(f"Pulish {file_name} successfully")
-            # logic to make the metadata here
-            metainfo = generate_metainfo(file_name, file_dir)
-            file_share.append(metainfo)
+
     else:
         print("File not found in directory, cannot publish")
+        
+def connect_to_server(server_host, server_port):
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.connect((server_host, server_port))
+    message = {
+        'action' : 'introduce',
+        'peer_id': id,
+        'peer_name': name,
+        'peer_port': port
+    }
+    sock.sendall(json.dumps(message).encode() + b'\n')
+    return sock
+        
+def publish_piece_file(sock,peers_port,file_name,file_size, piece_hash,piece_size,num_order_in_file):
+    peers_hostname = socket.gethostname()
+    command = {
+        "action": "publish",
+        "peers_port": peers_port,
+        "peers_hostname":peers_hostname,
+        "file_name":file_name,
+        "file_size":file_size,
+        "piece_hash":piece_hash,
+        "piece_size":piece_size,
+        "num_order_in_file":num_order_in_file,
+    }
+    # shared_piece_files_dir.append(command)
+    sock.sendall(json.dumps(command).encode() + b'\n')
+    response = sock.recv(4096).decode()
+    print(response)
     
-
+def fetch(filename):
+    # this request the tracker to have peerlist {type: request_file, filename : filename}
+    
+    # recieve the response from the tracker {num_peer: num, peer_list:[{host: , port: }] }
+    # if num =0 -> no peer have file
+    # if num>0 -> start dowload
+    
+    # get the metainfo from the tracker, creat the list of piece (flag, piece_order, calculate the startbyte and endbyte)
+    
+    
+    # then, make connect to the peer
+    
+    # send request to peer {type: request_piece, filename, piece_order}
+    
+    # recieve the data, write to the 
+    pass
 
 
         
 if __name__ == "__main__":
-
-    publish('Chapter_3.pdf')
-    publish('Chapter_3.pdf')
+    server_host = 'localhost'
+    server_port = 5000
+    
+    connect_to_server(server_host, server_port)
+    publish('eBook.txt')
+    # publish('Chapter_3.pdf')
+    # publish('Chapter_3.pdf')
  
     #print_metainfo(split_file_into_pieces(f"{file_dir}/eBook.txt",500000))

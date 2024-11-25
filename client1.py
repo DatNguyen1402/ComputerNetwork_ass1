@@ -111,5 +111,9 @@ def response_to_peer(self):
 
         
 if __name__ == "__main__":
+    server_host = '0.0.0.0'
+    server_port = 5000
+    
+    
     get_files_and_sizes(file_dir)
      

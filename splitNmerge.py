@@ -1,26 +1,62 @@
 import os
+import hashlib
+import json
 
-def split_file_into_pieces(file_path, piece_length):
+
+def split_file_into_pieces(file_name, piece_length):
     pieces = []
-    with open(file_path, "rb") as file:
-        counter = 1
+    file_size = os.path.getsize(file_name)
+    
+    with open(file_name, 'rb') as f:
         while True:
-            piece_data = file.read(piece_length)
-            if not piece_data:
+            piece = f.read(piece_length)
+            if not piece:
                 break
-            piece_file_path = f"{file_path}_piece{counter}"
-            with open(piece_file_path, "wb") as piece_file:
-                piece_file.write(piece_data)
-            pieces.append(piece_file_path)
-            counter += 1
-    return pieces
+            sha1_hash = hashlib.sha1(piece).digest()  # SHA-1 hash của mỗi piece
+            pieces.append(sha1_hash)
+    
+    return pieces, file_size
 
-def merge_pieces(piece_files, output_file_path):
-    with open(output_file_path, "wb") as output_file:
-        for piece_file in piece_files:
-            with open(piece_file, "rb") as piece:
-                output_file.write(piece.read())
-    print(f"Merged {len(piece_files)} pieces into {output_file_path}")
+# Hàm tính toán SHA-1 hash cho từng piece
+def calculate_piece_hash(piece):
+    sha1 = hashlib.sha1()
+    sha1.update(piece)
+    return sha1.hexdigest()
+
+def generate_metainfo(file_name, piece_length=512*1024):
+    # Chia file thành các pieces và lấy danh sách hash SHA-1 của chúng
+    pieces, file_size = split_file_into_pieces(file_name, piece_length)
+    
+    # Convert danh sách hash thành chuỗi duy nhất
+    pieces_str = b''.join(pieces).hex()  # chuyển thành hex string
+    
+    metainfo = {
+        "info": {
+            "name": os.path.basename(file_name),  # Lấy tên file
+            "piece length": piece_length,         # Chiều dài của mỗi piece (512KB)
+            "pieces": pieces_str,                 # Chuỗi các SHA-1 hash
+            "length": file_size                   # Kích thước file
+        }
+    }
+    
+    return metainfo
+
+def read_metainfo(metainfo):
+    info = metainfo['info']
+    print(f"File name: {info['name']}")
+    print(f"Piece length: {info['piece length']} bytes")
+    print(f"File size: {info['length']} bytes")
+    
+    # Tính toán số pieces từ length
+    num_pieces = len(info['pieces']) // 40  # 40 ký tự hex = 20 byte mỗi piece
+    print(f"Number of pieces: {num_pieces}")
+
+# Test đọc metainfo
+# Test
+metainfo = generate_metainfo("D:\HCMUT\HK241\ComputerNetwork\Ass1\src\clients\client2\origin\eBook.txt", 512*1024)
 
 
 
+
+print(metainfo)
+read_metainfo(metainfo)
