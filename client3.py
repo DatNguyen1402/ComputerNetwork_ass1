@@ -4,6 +4,7 @@ import os
 import threading
 import math
 import json
+import shlex
 from metainfo import generate_metainfo
 
 # client 3 
@@ -121,6 +122,12 @@ def fetch(sock, file_data):    #send to server
     
     response = sock.recv(4096).decode("utf-8")
     print(response)
+    
+    # take  info in the response
+    
+    for peer in response:
+        print (peer['name'])
+    
     # recieve the response from the tracker {num_peer: num, peer_list:[{host: , port: }] }
     # if num =0 -> no peer have file
     # if num>0 -> start dowload
@@ -141,7 +148,24 @@ if __name__ == "__main__":
     
     sock = connect_to_server(server_host, server_port)
 
-    publish(sock, 'eBook.txt')
+    try:
+        while True:
+            user_input = input("Enter command (publish file_name/ fetch file_name/ exit): ")#addr[0],peers_port, peers_hostname,file_name, piece_hash,num_order_in_file
+            command_parts = shlex.split(user_input)
+            if len(command_parts) == 2 and command_parts[0].lower() == 'publish':
+                _,file_name = command_parts
+                publish(sock, file_name)
+            elif len(command_parts) == 2 and command_parts[0].lower() == 'fetch':
+                _, file_name = command_parts
+                fetch(sock,file_name)
+            elif user_input.lower() == 'exit':
+                sock.close()
+                break
+            else:
+                print("Invalid command.")
+
+    finally:
+            sock.close()
     
     
     # publish('Chapter_3.pdf')

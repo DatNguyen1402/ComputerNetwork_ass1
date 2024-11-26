@@ -5,7 +5,7 @@ import threading
 import math
 import json
 from metainfo import generate_metainfo
-
+import shlex
 # client 1 (peer1) 
 
 host = 'localhost'
@@ -120,7 +120,19 @@ def fetch(sock, file_data):    #send to server
     sock.sendall(json.dumps(message).encode('utf-8') + b'\n')
     
     response = sock.recv(4096).decode("utf-8")
-    print(response)
+    
+    peerlist = json.loads(response)
+    
+    num_peer = len(peerlist)
+    
+    if num_peer == 0:
+        print("no peer")
+        return 
+    if num_peer > 0:
+        print(f"have {num_peer}, start download file")
+        
+    # for peer in peerlist:
+    #     print (peer['name'])    
     # recieve the response from the tracker {num_peer: num, peer_list:[{host: , port: }] }
     # if num =0 -> no peer have file
     # if num>0 -> start dowload
@@ -133,7 +145,64 @@ def fetch(sock, file_data):    #send to server
     # send request to peer {type: request_piece, filename, piece_order}
     
     # recieve the data, write to the 
+def handle(peer_list):
+    pass
 
+def handle_file_request(other_sock, file_dir):
+    try:
+        data = other_sock.recv(4096).decode()
+        # message = json.loads(data)
+        
+            
+            # send_piece_to_client(conn, file, index)
+    finally:
+        other_sock.close()
+
+def request_piece(file_name, piece_index, peer_port):
+    peer_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    filepath = os.path.join(file_dir, file_name)
+    try:
+        peer_sock.connect(('localhost', peer_port))
+        peer_sock.sendall(json.dumps({
+            'action': 'send_file', 
+            'file_name': file_name, 
+            'piece_index': piece_index
+        }).encode() + b'\n')
+
+        with open(f"{filepath}_piece{piece_index}", 'wb') as f:
+            while True:
+                data = peer_sock.recv(4096)
+                if not data:
+                    break
+                f.write(data)
+
+        print(f"Downloaded piece {piece_index} of {file_name}")
+    except Exception as e:
+        print(f"Error downloading piece {piece_index}: {e}")
+    finally:
+        peer_sock.close()
+
+
+
+def send_piece_to_client(other_sock, file_name, piece_index, piece_size=512*1024):
+    file_path = os.path.join(file_dir, file_name)
+    try:
+        with open(file_path, 'rb') as f:
+            while True:
+                f.seek(piece_index * piece_size)
+                data = f.read(piece_size)
+        
+        offset = 0
+        while offset < len(data):
+            chunk = data[offset:offset + chunk_size]
+            other_sock.sendall(chunk)
+            offset += chunk_size
+                
+    except FileNotFoundError:
+        print(f"File {file_name} not found.")
+    except Exception as e:
+        print(f"Error while sending piece: {e}")
+    
         
 if __name__ == "__main__":
     server_host = 'localhost'
@@ -141,9 +210,30 @@ if __name__ == "__main__":
     
     sock = connect_to_server(server_host, server_port)
 
-    # fetch(sock, 'eBook.txt')
+
     
 
     # publish('Chapter_3.pdf')
  
     #print_metainfo(split_file_into_pieces(f"{file_dir}/eBook.txt",500000))
+    
+
+
+    try:
+        while True:
+            user_input = input("Enter command (publish file_name/ fetch file_name/ exit): ")#addr[0],peers_port, peers_hostname,file_name, piece_hash,num_order_in_file
+            command_parts = shlex.split(user_input)
+            if len(command_parts) == 2 and command_parts[0].lower() == 'publish':
+                _,file_name = command_parts
+                publish(sock, file_name)
+            elif len(command_parts) == 2 and command_parts[0].lower() == 'fetch':
+                _, file_name = command_parts
+                fetch(sock,file_name)
+            elif user_input.lower() == 'exit':
+                sock.close()
+                break
+            else:
+                print("Invalid command.")
+
+    finally:
+            sock.close()

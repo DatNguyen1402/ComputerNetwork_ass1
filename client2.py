@@ -4,6 +4,7 @@ import os
 import threading
 import math
 import json
+import shlex
 from metainfo import generate_metainfo
 
 # client 2 (peer2) 
@@ -138,73 +139,53 @@ def fetch(sock, file_data):    #send to server
     # send request to peer {type: request_piece, filename, piece_order}
     
     # recieve the data, write to the 
+
+    
 def handle(peer_list):
     pass
 
+def handle_file_request(other_sock, file_dir):
+    try:
+        data = other_sock.recv(4096).decode()
+        # message = json.loads(data)
+        
+            
+            # send_piece_to_client(conn, file, index)
+    finally:
+        other_sock.close()
 
-def request_piece(selfsock, piece, hash, peer_host, peer_port):
-    
-    
-    
+def request_piece(selfsock, piece, hash, peer_host, peer_port):            
     pass
 
-def send_piece(client_socket, file_name, piece_index):
-    try:
-        with open(file_name, 'rb') as f:
-            piece_size = 512 * 1024  
-            f.seek(piece_index * piece_size)
-            piece_data = f.read(piece_size)
 
-        client_socket.sendall(piece_data)
-    except Exception as e:
-        print(f"Error sending piece {piece_index}: {e}")
-    finally:
-        client_socket.close()
+def send_piece_to_client(other_sock, metainfo, piece_index):
+    pass
+    
 
 
 
-def handle_client(client_socket):
-    try:
-        message = client_socket.recv(4096).decode("utf-8")
-        if not message:
-            return
-        
-        data = json.loads(message)
-        if data['action'] == 'request_piece':
-            file_name = data['file_name']
-            piece_index = data['piece_index']
-            print(f"Received request for piece {piece_index} of {file_name}")
-            
-            send_piece(client_socket, file_name, piece_index)
-    except Exception as e:
-        print(f"Error handling client: {e}")
-        client_socket.close()
 
-def start_peer_server(host = '0.0.0.0', port):
-    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    server_socket.bind((host, port))
-    server_socket.listen()
-    print(f"Peer listening on {host}:{port}")
+   
+stop_event = threading.Event()
+    
+def peer_server(port, shared_files_dir):
+    server_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server_sock.bind(('0.0.0.0', port))
+    server_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    server_sock.listen()
 
-    try:
-        while True:
-            client_socket, addr = server_socket.accept()
-            thread = threading.Thread(target=handle_client, args=(client_socket,))
+    while not stop_event.is_set():
+        try:
+            server_sock.settimeout(1) 
+            conn, addr = server_sock.accept()
+            thread = threading.Thread(target=handle, args=(conn, shared_files_dir))
             thread.start()
-    except Exception as e:
-        print(f"Error: {e}")
-    finally:
-        server_socket.close()
+        except socket.timeout:
+            continue
+        except Exception as e:
+            break
 
-def save_piece_to_file(file_name, piece_index, piece_data):
-    try:
-        piece_size = 512 * 1024  # Kích thước mảnh dữ liệu
-        with open(file_name, 'r+b') as f:  # Mở file trong chế độ đọc/ghi
-            f.seek(piece_index * piece_size)
-            f.write(piece_data)
-        print(f"Saved piece {piece_index} of {file_name}")
-    except Exception as e:
-        print(f"Error saving piece {piece_index}: {e}")
+    server_sock.close()
         
 if __name__ == "__main__":
     server_host = 'localhost'
@@ -212,9 +193,24 @@ if __name__ == "__main__":
     
     sock = connect_to_server(server_host, server_port)
     
+    try:
+        while True:
+            user_input = input("Enter command (publish file_name/ fetch file_name/ exit): ")#addr[0],peers_port, peers_hostname,file_name, piece_hash,num_order_in_file
+            command_parts = shlex.split(user_input)
+            if len(command_parts) == 2 and command_parts[0].lower() == 'publish':
+                _,file_name = command_parts
+                publish(sock, file_name)
+            elif len(command_parts) == 2 and command_parts[0].lower() == 'fetch':
+                _, file_name = command_parts
+                fetch(sock,file_name)
+            elif user_input.lower() == 'exit':
+                sock.close()
+                break
+            else:
+                print("Invalid command.")
 
-    publish(sock, 'eBook.txt')
-    fetch(sock, 'eBook.txt')
+    finally:
+            sock.close()
 
 
  

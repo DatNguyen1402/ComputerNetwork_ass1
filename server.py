@@ -56,6 +56,7 @@ def handle_client(client_socket, client_address):
                     client_socket.sendall(json.dumps(peer_have_file).encode()+ b'\n')
 
 
+
                 else:
                     read_metainfo(metainfo)
                 
