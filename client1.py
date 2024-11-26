@@ -145,15 +145,26 @@ def fetch(sock, file_data):    #send to server
     # send request to peer {type: request_piece, filename, piece_order}
     
     # recieve the data, write to the 
-def handle(peer_list):
-    pass
+
+
+def handle_peer_connection(peer_sock):
+    """Xử lý kết nối từ một peer."""
+    try:
+        handle_file_request(peer_sock, file_dir)
+    except Exception as e:
+        print(f"Error handling peer connection: {e}")
+    finally:
+        peer_sock.close() 
 
 def handle_file_request(other_sock, file_dir):
     try:
         data = other_sock.recv(4096).decode()
         # message = json.loads(data)
-        
-            
+        message = json.loads(data)
+        if message['action'] == 'sendfile':
+            file_name = message['file_name']
+            piece_index = message['piece_index']
+            send_piece_to_client(other_sock, file_name, piece_index)
             # send_piece_to_client(conn, file, index)
     finally:
         other_sock.close()
@@ -202,14 +213,33 @@ def send_piece_to_client(other_sock, file_name, piece_index, piece_size=512*1024
         print(f"File {file_name} not found.")
     except Exception as e:
         print(f"Error while sending piece: {e}")
+stop_event = threading.Event()
     
+def peer_server(port):
+    server_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server_sock.bind(('0.0.0.0', port))
+    server_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    server_sock.listen()
+
+    while not stop_event.is_set():
+        try:
+            server_sock.settimeout(1) 
+            conn, addr = server_sock.accept()
+            thread = threading.Thread(target=handle_peer_connection, args=(conn))
+            thread.start()
+        except socket.timeout:
+            continue
+        except Exception as e:
+            break
+
+    server_sock.close()    
         
 if __name__ == "__main__":
     server_host = 'localhost'
     server_port = 5000
     
     sock = connect_to_server(server_host, server_port)
-
+    
 
     
 
