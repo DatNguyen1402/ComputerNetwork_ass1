@@ -54,16 +54,9 @@ def handle_client(client_socket, client_address):
                     peer_have_file = get_peers_for_file(file_name)
                     
                     client_socket.sendall(json.dumps(peer_have_file).encode()+ b'\n')
-
-
-
                 else:
                     read_metainfo(metainfo)
-                
-                # response = 'file been fetch '
-                
-                # client_socket.sendall(response.encode("utf-8"))  
-                                  
+                                                  
     except Exception as e:
         print(f"Error with {client_address}: {e}")
     finally:
@@ -97,6 +90,7 @@ def server(host, port):
 if __name__ == "__main__":
     host = '0.0.0.0'
     port = 5000
-    server_thread = threading.Thread(target=server,args=(host, port))
-    server_thread.start()
-    sys.exit(0)
+    # server_thread = threading.Thread(target=server,args=(host, port))
+    # server_thread.start()
+    # sys.exit(0)
+    server(host, port)

@@ -58,3 +58,46 @@ def read_metainfo(metainfo):
     num_pieces = len(info['pieces']) // 40  # 40 ký tự hex = 20 byte mỗi piece
     print(f"Number of pieces: {num_pieces}")
 
+def parse_meta_info(meta_info):
+    file_name = meta_info['info']['name']
+    piece_length = meta_info['info']['piece length']
+    pieces_hash = meta_info['info']['pieces']
+    file_length = meta_info['info']['length']
+
+    # Calculate the number of pieces
+    num_pieces = (file_length + piece_length - 1) // piece_length  
+
+    # Extract each 20-byte (40-hex chars) piece hash
+    piece_hashes = [pieces_hash[i:i+40] for i in range(0, len(pieces_hash), 40)]
+
+    return {
+        "file_name": file_name,
+        "piece_length": piece_length,
+        "file_length": file_length,
+        "num_pieces": num_pieces,
+        "piece_hashes": piece_hashes
+    }
+
+def read_piece(file_path, piece_index, piece_length):
+    with open(file_path, 'rb') as f:
+        f.seek(piece_index * piece_length)
+        piece_data = f.read(piece_length)
+    return piece_data
+
+def verify_piece(piece_data, expected_hash):
+    piece_hash = hashlib.sha1(piece_data).hexdigest()
+    return piece_hash == expected_hash
+
+def get_piece(meta_info, file_path, piece_index):
+    parsed_meta = parse_meta_info(meta_info)
+    piece_length = parsed_meta['piece_length']
+    expected_hash = parsed_meta['piece_hashes'][piece_index]
+
+    piece_data = read_piece(file_path, piece_index, piece_length)
+
+    if verify_piece(piece_data, expected_hash):
+        print(f"Piece {piece_index} is valid.")
+        return piece_data
+    else:
+        print(f"Piece {piece_index} is corrupted.")
+        return None
