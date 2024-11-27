@@ -24,7 +24,7 @@ def split_file_into_pieces(file_name, piece_length):
     
     return pieces, file_size
 
-# Hàm tính toán SHA-1 hash cho từng piece
+
 def calculate_piece_hash(piece):
     sha1 = hashlib.sha1()
     sha1.update(piece)
@@ -57,6 +57,10 @@ def read_metainfo(metainfo):
     # Tính toán số pieces từ length
     num_pieces = len(info['pieces']) // 40  # 40 ký tự hex = 20 byte mỗi piece
     print(f"Number of pieces: {num_pieces}")
+
+def get_file_name(metainfo):
+    info = metainfo['info']
+    return info['name']
 
 def parse_meta_info(meta_info):
     file_name = meta_info['info']['name']
@@ -101,3 +105,4 @@ def get_piece(meta_info, file_path, piece_index):
     else:
         print(f"Piece {piece_index} is corrupted.")
         return None
+

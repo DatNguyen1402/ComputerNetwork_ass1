@@ -3,12 +3,10 @@ import traceback  # For detailed error reporting
 import threading
 import json
 import sys
-from metainfo import read_metainfo
-from server_data import add_peer, add_shared_file, get_peers_for_file, remove_peer
+from metainfo import read_metainfo, get_file_name
+from server_data import add_peer, add_shared_file, get_peers_for_file, remove_peer, getmetainfo, peerlist, file_sharing, file_metadata
 
 
-peerlist = {}  
-file_sharing = {}  
 
 
 def handle_client(client_socket, client_address):
@@ -25,21 +23,26 @@ def handle_client(client_socket, client_address):
                 peer_port = data['peer_port']
                 peer_name = data['peer_name']
                 peer_id = data['peer_id']
-                add_peer(peer_id, peer_name, peer_port)
+                peer_ip = data['peer_ip']
+                add_peer(peer_id, peer_name, peer_ip, peer_port)
                 print(f"add {peer_name} to connection")
             
             if data['action'] == 'publish':
                 peer_port = data['peer_port']
+                peer_ip = data['peer_ip']
                 peer_name = data['peer_name']
                 peer_id = data['peer_id']
                 file_name = data['file_name']
                 metainfo = data['metainfo']
                 
-                flag = add_shared_file(peer_id, file_name)
+                flag = add_shared_file(peer_id, file_name, metainfo)
+                print(peerlist)
+                print(file_sharing)
+                print(file_metadata)
                 if flag == 1:
                     response = 'file been publish successfully'
                 if flag == 0:
-                    response = 'file have been there before'
+                    response = 'file have been publish before'
                 
                 client_socket.sendall(response.encode("utf-8"))
                 
@@ -47,15 +50,24 @@ def handle_client(client_socket, client_address):
                 peer_port = data['peer_port']
                 peer_name = data['peer_name']
                 peer_id = data['peer_id']
+                peer_ip = data['peer_ip']
                 file_name = data['file_name']
                 
                 metainfo = data.get('metainfo')
+                
                 if not metainfo:
                     peer_have_file = get_peers_for_file(file_name)
+                    print (peer_have_file)
+                    metainfo = getmetainfo(file_name, file_metadata)
                     
-                    client_socket.sendall(json.dumps(peer_have_file).encode()+ b'\n')
+                    response = {'peer_list' : peer_have_file,
+                                'metainfo' : metainfo}
+                    client_socket.sendall(json.dumps(response).encode()+ b'\n')
                 else:
-                    read_metainfo(metainfo)
+                    peer_have_file = get_peers_for_file(get_file_name(metainfo))
+                    response = {'peer_list' : peer_have_file,
+                                'metainfo' : metainfo}
+                    client_socket.sendall(json.dumps(peer_have_file).encode()+ b'\n')
                                                   
     except Exception as e:
         print(f"Error with {client_address}: {e}")

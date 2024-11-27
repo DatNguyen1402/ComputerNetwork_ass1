@@ -1,32 +1,22 @@
 import os
 
-file_dir = "../src/clients/client2/origin"
+file_dir = "../src/clients/client1/origin"
 
-def send_piece_to_client(file_name, piece_index, piece_size=512*1024):
-    file_path = os.path.join(file_dir, file_name)
+def merge_pieces(filedir, file_name, total_pieces):
+    filepath = os.path.join(filedir, file_name)
+    with open(filepath, 'wb') as merged_file:
+        for piece_index in range(total_pieces):
+            piece_filename = f"{filepath}_piece{piece_index}"
+            
+            if os.path.exists(piece_filename):
+                # Read each piece in binary mode and write it to the merged file
+                with open(piece_filename, 'rb') as piece_file:
+                    merged_file.write(piece_file.read())
+                os.remove(piece_filename)
+            else:
+                print(f"Warning: Piece {piece_filename} does not exist.")
     
-    try:
-        with open(file_path, 'rb') as f:
-            # Move the file pointer to the start of the requested piece
-            f.seek(piece_index * piece_size)
-            # Read the specified piece
-            data = f.read(piece_size)
-        
-        if not data:
-            print(f"No data found for piece {piece_index} of file {file_name}")
-            return
-        
-        offset = 0
-        chunk_size = 4096
-        while offset < len(data):
-            chunk = data[offset:offset + chunk_size]
-            print(chunk)
-            offset += chunk_size
-                
-    except FileNotFoundError:
-        print(f"File {file_name} not found.")
-    except Exception as e:
-        print(f"Error while sending piece: {e}")
+    print(f"Merging complete: {filepath}")
 
 if __name__ == "__main__":
-    send_piece_to_client('eBook.txt', 0)
+    merge_pieces(file_dir, 'eBook.txt', 7)

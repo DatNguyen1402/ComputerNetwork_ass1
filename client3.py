@@ -4,67 +4,30 @@ import os
 import threading
 import math
 import json
+from metainfo import generate_metainfo, parse_meta_info
+from trackfile import check_file, check_file_share
+from server_data import get_peerport, get_peerip
+from dowload_data import generate_request, handle_file_request, request_piece, merge_pieces
 import shlex
-from metainfo import generate_metainfo
 
-# client 3 
 
-host = 'localhost'
-id = 3
-port = 6002
-name = 'client 3'
-file_dir = "../src/clients/client3/origin"
-file_share = []     #store filename only
-
+def connect_to_server(server_host, server_port):
+    sock_peer_server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock_peer_server.connect((server_host, server_port))
+    message = {
+        'action' : 'introduce',
+        'peer_id': id,
+        'peer_name': name,
+        'peer_port': port,
+        'peer_ip' : ip
+    }
+    sock_peer_server.sendall(json.dumps(message).encode() + b'\n')
+    return sock_peer_server
     
-def check_file_path(file_path):
-    print(f"Checking in the file path {file_path}")
-    if not os.path.isdir(file_path):
-        print("The provided path is not a valid directory.")
-        return -1
-    else:
-        files = [f for f in os.listdir(file_path) if os.path.isfile(os.path.join(file_path, f))]
-        
-        if files:
-            print("Files in the directory:")
-            for filename in files:
-                print(filename)
-            return 1  
-        else:
-            print("Directory is empty. No files found.")
-            return 0
-
-def check_file(file_path, file_name):
-    print(f"Check if {file_name} in path {file_path}")
-    flag = 0
-    if not os.path.isdir(file_path):
-        print("The provided path is not a valid directory.")
-        return -1
-    else:
-        files = [f for f in os.listdir(file_path) if os.path.isfile(os.path.join(file_path, f))]
-        
-        if files:
-            for filename in files:
-                if file_name == filename:
-                    flag = 1    
-    if flag == 0:
-        print("File not found")
-    if flag == 1:
-        print("File found in path")
-    return flag
-
-def check_file_share(file_name):
-    for i in file_share: 
-        if i == file_name:
-            return 1 
-    return 0 
-
-
-
-def publish(sock, file_name):
+def publish(sock_peer_server,id ,port, ip, name, file_name, file_dir, file_share):
     print(f"Publish {file_name} to the network")
     if check_file(file_dir, file_name) == 1:
-        if check_file_share(file_name) == True:
+        if check_file_share(file_name, file_share) == True:
             print("File have been there")
         else:
             metaifo = generate_metainfo(os.path.join(file_dir, file_name), 512*1024)
@@ -73,31 +36,20 @@ def publish(sock, file_name):
             'peer_id': id,
             'peer_name': name,
             'peer_port': port,
+            'peer_ip' : ip,
             'file_name': file_name,
             'metainfo' : metaifo
             }
-            sock.sendall(json.dumps(message).encode("utf-8") + b'\n')
+            sock_peer_server.sendall(json.dumps(message).encode("utf-8") + b'\n')
             
-            response = sock.recv(4096).decode("utf-8")
+            response = sock_peer_server.recv(4096).decode("utf-8")
             file_share.append(file_name)
             print(response)        
     else:
         print("File not found in directory, cannot publish")
         
-def connect_to_server(server_host, server_port):
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    sock.connect((server_host, server_port))
-    message = {
-        'action' : 'introduce',
-        'peer_id': id,
-        'peer_name': name,
-        'peer_port': port,
-    }
-    sock.sendall(json.dumps(message).encode() + b'\n')
-    return sock
-        
     
-def fetch(sock, file_data):    #send to server
+def fetch(sock_peer_server, port, ip, name, id, file_data, file_dir):    #send to server
     # this request the tracker to have peerlist {type: request_file, filename : filename}
     if isinstance(file_data, str):
         file_name = file_data
@@ -114,60 +66,111 @@ def fetch(sock, file_data):    #send to server
         'peer_id': id,
         'peer_name': name,
         'peer_port': port,
+        'peer_ip' : ip,
         'file_name': file_name,
         'metainfo' : metainfo
     }
     
-    sock.sendall(json.dumps(message).encode('utf-8') + b'\n')
+    sock_peer_server.sendall(json.dumps(message).encode('utf-8') + b'\n')
     
-    response = sock.recv(4096).decode("utf-8")
-    print(response)
+    response = sock_peer_server.recv(4096).decode("utf-8")      
+    response_data = json.loads(response)
     
-    # take  info in the response
+    print(response_data)
     
-    for peer in response:
-        print (peer['name'])
+    peerlist = response_data['peer_list']
+    read_metainfo = parse_meta_info(response_data['metainfo'])
     
-    # recieve the response from the tracker {num_peer: num, peer_list:[{host: , port: }] }
-    # if num =0 -> no peer have file
-    # if num>0 -> start dowload
+    num_pieces = read_metainfo['num_pieces'] #example            
+    num_peers = len(peerlist)
     
-    # get the metainfo from the tracker, creat the list of piece (flag, piece_order, calculate the startbyte and endbyte)
-    
-    
-    # then, make connect to the peer
-    
-    # send request to peer {type: request_piece, filename, piece_order}
-    
-    # recieve the data, write to the 
-
+    if num_peers == 0:
+        print("no peer")
+        return 
+    if num_peers > 0:
+        print(f"have {num_peers}, start download file")
         
-if __name__ == "__main__":
-    server_host = 'localhost'
-    server_port = 5000
-    
-    sock = connect_to_server(server_host, server_port)
+    print(peerlist)    
 
+    request_list = generate_request(num_pieces, peerlist) 
+    
+    print(request_list)
+    
+    request_threads=[]
+
+    for peer_id, piece_index in request_list:
+        peer_port = get_peerport(peer_id, peerlist)
+        peer_ip = get_peerip(peer_id, peerlist)
+        thread = threading.Thread(target=request_piece, args=(file_dir, file_name, piece_index, peer_port, peer_ip))
+        thread.start()
+        request_threads.append(thread)
+        # Create a thread for each piece request 
+    for thread in request_threads:
+        thread.join()
+    
+    merge_pieces(file_dir, file_name, num_pieces)
+
+    
+    
+def peer_host(ip, port, file_dir):
+    sock_peer_peer = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock_peer_peer.bind((ip, port))
+    sock_peer_peer.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    sock_peer_peer.listen()
+    print(f"peer1 listening on {port}")
+    while not stop_event.is_set():
+        try:
+            sock_peer_peer.settimeout(1) 
+            peer_sock, addr = sock_peer_peer.accept()
+            thread = threading.Thread(target=handle_file_request, args=(peer_sock,file_dir))
+            thread.start()
+        except socket.timeout:
+            continue
+        except Exception as e:
+            break
+
+    sock_peer_peer.close()    
+   
+stop_event = threading.Event()
+
+def start_client(server_host, server_port,peer_id, peer_ip, peer_port, peer_dir, name, file_share):
+        
+    peer_host_thread = threading.Thread(target=peer_host, args=(peer_ip, peer_port, peer_dir))
+    peer_host_thread.start()
+
+    sock = connect_to_server(server_host, server_port)
+      
     try:
         while True:
             user_input = input("Enter command (publish file_name/ fetch file_name/ exit): ")#addr[0],peers_port, peers_hostname,file_name, piece_hash,num_order_in_file
             command_parts = shlex.split(user_input)
             if len(command_parts) == 2 and command_parts[0].lower() == 'publish':
                 _,file_name = command_parts
-                publish(sock, file_name)
+                publish(sock,peer_id,peer_port, peer_ip, name, file_name, peer_dir, file_share)
             elif len(command_parts) == 2 and command_parts[0].lower() == 'fetch':
-                _, file_name = command_parts
-                fetch(sock,file_name)
+                _, file_data = command_parts
+                fetch(sock, peer_port, peer_ip, name, peer_id ,file_data, peer_dir)
             elif user_input.lower() == 'exit':
                 sock.close()
+                stop_event.set()
                 break
             else:
                 print("Invalid command.")
-
+    except KeyboardInterrupt:
+        exit(0)
     finally:
-            sock.close()
+        sock.close()
+        peer_host_thread.join()         
+         
+if __name__ == "__main__":
+    server_host = 'localhost'
+    server_port = 5000
+    id = 3
+    port = 6003
+    ip = 'localhost'
+    name = 'client 3'
+    file_dir = "../src/clients/client3/origin"
+    file_share = []     #store filename only
+    start_client(server_host, server_port, id, ip, port, file_dir, name, file_share)
     
     
-    # publish('Chapter_3.pdf')
- 
-    #print_metainfo(split_file_into_pieces(f"{file_dir}/eBook.txt",500000))
