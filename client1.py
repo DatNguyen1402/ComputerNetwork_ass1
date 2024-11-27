@@ -93,7 +93,12 @@ def connect_to_server(server_host, server_port):
     }
     sock.sendall(json.dumps(message).encode() + b'\n')
     return sock
-        
+
+def get_peerport(peer_id, peerlist):
+    for peer in peerlist:
+        if peer['peer_id'] == peer_id:
+            return peer['peer_port']  
+    return None  
     
 def fetch(sock, file_data):    #send to server
     # this request the tracker to have peerlist {type: request_file, filename : filename}
@@ -138,22 +143,15 @@ def fetch(sock, file_data):    #send to server
     print(request_list)
     
     request_threads=[]
-    
+
     for peer_id, piece_index in request_list:
         peer_port = get_peerport(peer_id, peerlist)
-        
         thread = threading.Thread(target=request_piece, args=(file_name, piece_index, peer_port))
         thread.start()
         request_threads.append(thread)
         # Create a thread for each piece request 
-        for thread in request_threads:
-            thread.join()
-
-def get_peerport(peer_id, peerlist):
-    for peer in peerlist:
-        if peer['peer_id'] == peer_id:
-            return peer['peerport']  
-    return None  
+    for thread in request_threads:
+        thread.join()
 
 def generate_request(num_pieces, peerlist):
     num_peers = len(peerlist)
@@ -185,6 +183,7 @@ def handle_file_request(other_sock):
 
 def request_piece(file_name, piece_index, peer_port):
     try:
+        print("Trying to connect 1")
         peer_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         filepath = os.path.join(file_dir, file_name)
         peer_sock.connect(('localhost', peer_port))
@@ -280,7 +279,8 @@ if __name__ == "__main__":
                 break
             else:
                 print("Invalid command.")
-
+    except KeyboardInterrupt:
+        exit(0)
     finally:
         sock.close()
         peer_server_thread.join()

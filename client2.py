@@ -146,8 +146,8 @@ def fetch(sock, file_data):    #send to server
         thread.start()
         request_threads.append(thread)
         # Create a thread for each piece request 
-        for thread in request_threads:
-            thread.join()
+    for thread in request_threads:
+        thread.join()
 
 def get_peerport(peer_id, peerlist):
     for peer in peerlist:
@@ -187,6 +187,7 @@ def request_piece(file_name, piece_index, peer_port):
     peer_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     filepath = os.path.join(file_dir, file_name)
     try:
+        print("Trying to connect")
         peer_sock.connect(('localhost', peer_port))
         peer_sock.sendall(json.dumps({
             'action': 'send_file', 
@@ -213,9 +214,13 @@ def send_piece_to_client(other_sock, file_name, piece_index, piece_size=512*1024
     file_path = os.path.join(file_dir, file_name)
     try:
         with open(file_path, 'rb') as f:
-            while True:
-                f.seek(piece_index * piece_size)
-                data = f.read(piece_size)
+            # Move the file pointer to the start of the requested piece
+            f.seek(piece_index * piece_size)
+            # Read the specified piece
+            data = f.read(piece_size)
+        if not data:
+            print(f"No data found for piece {piece_index} of file {file_name}")
+            return
         
         offset = 0
         chunk_size = 4096
