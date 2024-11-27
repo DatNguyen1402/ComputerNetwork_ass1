@@ -4,7 +4,7 @@ import os
 import threading
 import math
 import json
-from metainfo import generate_metainfo, parse_meta_info, get_file_name
+from metainfo import generate_metainfo, parse_meta_info
 from trackfile import check_file, check_file_share
 from server_data import get_peerport, get_peerip
 from dowload_data import generate_request, handle_file_request, request_piece, merge_pieces
@@ -55,7 +55,7 @@ def fetch(sock_peer_server, port, ip, name, id, file_data, file_dir):    #send t
         metainfo = None
     
     elif isinstance(file_data, dict):
-        file_name = get_file_name(metainfo)
+        file_name = file_data.get('filename')
         metainfo = file_data
     
     message ={
@@ -114,6 +114,7 @@ def peer_host(ip, port, file_dir):
     sock_peer_peer.bind((ip, port))
     sock_peer_peer.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     sock_peer_peer.listen()
+
     while not stop_event.is_set():
         try:
             sock_peer_peer.settimeout(1) 

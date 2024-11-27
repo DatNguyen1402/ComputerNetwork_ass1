@@ -1,4 +1,5 @@
 import os
+import shlex
 
 def get_files_and_sizes(folder_path):
     # List to store file names and their sizes
@@ -62,3 +63,4 @@ def check_file_share(file_name, file_share):
         if i == file_name:
             return 1 
     return 0 
+
