@@ -25,10 +25,9 @@ def connect_to_server(server_host, server_port):
     return sock_peer_server
     
 def publish(sock_peer_server,id ,port, ip, name, file_name, file_dir, file_share):
-    print(f"Publish {file_name} to the network")
     if check_file(file_dir, file_name) == 1:
         if check_file_share(file_name, file_share) == True:
-            print("File have been there")
+            print("system : File have been there")
         else:
             metaifo = generate_metainfo(os.path.join(file_dir, file_name), 512*1024)
             message = {
@@ -46,7 +45,7 @@ def publish(sock_peer_server,id ,port, ip, name, file_name, file_dir, file_share
             file_share.append(file_name)
             print(response)        
     else:
-        print("File not found in directory, cannot publish")
+        print("system : File not found in directory, cannot publish")
         
     
 def fetch(sock_peer_server, port, ip, name, id, file_data, file_dir):    #send to server
@@ -54,12 +53,10 @@ def fetch(sock_peer_server, port, ip, name, id, file_data, file_dir):    #send t
     if isinstance(file_data, str):
         file_name = file_data
         metainfo = None
-        print(f"Fetch {file_name} from peer {name}")
     
     elif isinstance(file_data, dict):
         file_name = file_data.get('filename')
         metainfo = file_data
-        print(f"Fetch file using metainfo {metainfo}")
     
     message ={
         'action' : 'fetch',
@@ -85,10 +82,10 @@ def fetch(sock_peer_server, port, ip, name, id, file_data, file_dir):    #send t
     num_peers = len(peerlist)
     
     if num_peers == 0:
-        print("no peer")
+        print("Response from server : No peers have this file. ")
         return 
     if num_peers > 0:
-        print(f"have {num_peers}, start download file")
+        print(f"Response from server: {num_peers} peer(s) have this file, start download file...")
         
     print(peerlist)    
 
@@ -107,8 +104,9 @@ def fetch(sock_peer_server, port, ip, name, id, file_data, file_dir):    #send t
         # Create a thread for each piece request 
     for thread in request_threads:
         thread.join()
-
+        
     merge_pieces(file_dir, file_name, num_pieces)
+
     
     
 def peer_host(ip, port, file_dir):
@@ -116,7 +114,6 @@ def peer_host(ip, port, file_dir):
     sock_peer_peer.bind((ip, port))
     sock_peer_peer.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     sock_peer_peer.listen()
-    print(f"peer1 listening on {port}")
     while not stop_event.is_set():
         try:
             sock_peer_peer.settimeout(1) 

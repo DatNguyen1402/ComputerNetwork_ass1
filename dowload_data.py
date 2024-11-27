@@ -19,7 +19,7 @@ def handle_file_request(sock_peer_peer, file_dir):
         data = sock_peer_peer.recv(4096).decode()
         # message = json.loads(data)
         if data:
-            print(f"client2 get {data}")
+            print(f"Client get request {data}")
         message = json.loads(data)
         if message['action'] == 'send_file':
             file_name = message['file_name']
@@ -30,7 +30,7 @@ def handle_file_request(sock_peer_peer, file_dir):
 
 def request_piece(file_dir, file_name, piece_index, peer_port, peer_ip):
     try:
-        print("Trying to connect 1")
+        print(f"Trying to connect to - ip: {peer_ip}, port: {peer_port}")
         sock_peer_peer = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         filepath = os.path.join(file_dir, file_name)
         sock_peer_peer.connect((peer_ip, peer_port))

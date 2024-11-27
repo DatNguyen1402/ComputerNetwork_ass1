@@ -16,7 +16,6 @@ def handle_client(client_socket, client_address):
             message = client_socket.recv(4096).decode("utf-8")
             if not message:
                 break
-            print(f"Received from {client_address}: {message}")
             data = json.loads(message)
             #response
             if data['action'] == 'introduce':
@@ -25,7 +24,8 @@ def handle_client(client_socket, client_address):
                 peer_id = data['peer_id']
                 peer_ip = data['peer_ip']
                 add_peer(peer_id, peer_name, peer_ip, peer_port)
-                print(f"add {peer_name} to connection")
+                print("Reciece introduce messege")
+                print(f"add {peer_name}, id :{peer_id}, ip :{peer_ip}, port : {peer_port} to connection")
             
             if data['action'] == 'publish':
                 peer_port = data['peer_port']
@@ -36,13 +36,10 @@ def handle_client(client_socket, client_address):
                 metainfo = data['metainfo']
                 
                 flag = add_shared_file(peer_id, file_name, metainfo)
-                print(peerlist)
-                print(file_sharing)
-                print(file_metadata)
                 if flag == 1:
-                    response = 'file been publish successfully'
+                    response = 'Response from server : File been publish successfully'
                 if flag == 0:
-                    response = 'file have been publish before'
+                    response = 'Response from server : File have been published before'
                 
                 client_socket.sendall(response.encode("utf-8"))
                 
@@ -57,7 +54,6 @@ def handle_client(client_socket, client_address):
                 
                 if not metainfo:
                     peer_have_file = get_peers_for_file(file_name)
-                    print (peer_have_file)
                     metainfo = getmetainfo(file_name, file_metadata)
                     
                     response = {'peer_list' : peer_have_file,
@@ -83,7 +79,7 @@ def server(host, port):
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server_socket.bind((host, port))
     server_socket.listen()
-    print("Server started and is listening for connections.")
+    print("Server started and is listening for connections...")
 
     try:
         while True:
@@ -96,7 +92,6 @@ def server(host, port):
         
     finally:
         server_socket.close()
-        # client_socket.close()
 
 
 if __name__ == "__main__":
