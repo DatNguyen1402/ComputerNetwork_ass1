@@ -59,7 +59,6 @@ def check_file_share(file_name):
     return 0 
 
 
-
 def publish(sock, file_name):
     print(f"Publish {file_name} to the network")
     if check_file(file_dir, file_name) == 1:
@@ -131,31 +130,25 @@ def fetch(sock, file_data):    #send to server
     if num_peers > 0:
         print(f"have {num_peers}, start download file")
     print(peerlist)    
-    # for peer in peerlist:
-    #     print (peer['name'])    
-    # recieve the response from the tracker {num_peer: num, peer_list:[{host: , port: }] }
-    # if num =0 -> no peer have file
-    # if num>0 -> start dowload
-    
-    # meta_info = parse_meta_info(metainfo)
-    num_pieces = 7
+
+    num_pieces = 7 #example
     
     request_list = generate_request(num_pieces, peerlist) 
     
     print(request_list)
- 
-    threads = []  # To keep track of the threads for concurrent downloads
+    
+    request_threads=[]
     
     for peer_id, piece_index in request_list:
         peer_port = get_peerport(peer_id, peerlist)
-        request_piece(file_name, piece_index, peer_port)
+        
+        thread = threading.Thread(target=request_piece, args=(file_name, piece_index, peer_port))
+        thread.start()
+        request_threads.append(thread)
+        # Create a thread for each piece request 
+        for thread in request_threads:
+            thread.join()
 
-    #     thread = threading.Thread(target=request_piece, args=(file_name, piece_index, peer_port))
-    #     thread.start()
-    #     threads.append(thread)  # Add the thread to the list
-    
-
-    
 def get_peerport(peer_id, peerlist):
     for peer in peerlist:
         if peer['peer_id'] == peer_id:
@@ -180,20 +173,20 @@ def handle_file_request(other_sock):
     try:
         data = other_sock.recv(4096).decode()
         # message = json.loads(data)
+        if data:
+            print(f"client2 get {data}")
         message = json.loads(data)
         if message['action'] == 'send_file':
             file_name = message['file_name']
             piece_index = message['piece_index']
             send_piece_to_client(other_sock, file_name, piece_index)
-            # send_piece_to_client(conn, file, index)
     finally:
         other_sock.close()
 
 def request_piece(file_name, piece_index, peer_port):
-    peer_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    print(f"request {piece_index} from {peer_port}")
-    filepath = os.path.join(file_dir, file_name)
     try:
+        peer_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        filepath = os.path.join(file_dir, file_name)
         peer_sock.connect(('localhost', peer_port))
         peer_sock.sendall(json.dumps({
             'action': 'send_file', 
@@ -242,12 +235,12 @@ def peer_server(port):
     server_sock.bind(('0.0.0.0', port))
     server_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     server_sock.listen()
-
+    print(f"peer1 listening on {port}")
     while not stop_event.is_set():
         try:
             server_sock.settimeout(1) 
-            conn, addr = server_sock.accept()
-            thread = threading.Thread(target=handle_file_request, args=(conn,))
+            peer_sock, addr = server_sock.accept()
+            thread = threading.Thread(target=handle_file_request, args=(peer_sock,))
             thread.start()
         except socket.timeout:
             continue

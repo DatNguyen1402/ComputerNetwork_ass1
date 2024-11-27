@@ -130,32 +130,24 @@ def fetch(sock, file_data):    #send to server
     if num_peers > 0:
         print(f"have {num_peers}, start download file")
     print(peerlist)    
-    # for peer in peerlist:
-    #     print (peer['name'])    
-    # recieve the response from the tracker {num_peer: num, peer_list:[{host: , port: }] }
-    # if num =0 -> no peer have file
-    # if num>0 -> start dowload
-    
-    # meta_info = parse_meta_info(metainfo)
-    num_pieces = 7
+
+    num_pieces = 7 #example
     
     request_list = generate_request(num_pieces, peerlist) 
     
     print(request_list)
- 
-    threads = []  # To keep track of the threads for concurrent downloads
+    
+    request_threads=[]
     
     for peer_id, piece_index in request_list:
         peer_port = get_peerport(peer_id, peerlist)
         
-        # Create a thread for each piece request
         thread = threading.Thread(target=request_piece, args=(file_name, piece_index, peer_port))
         thread.start()
-        threads.append(thread)  # Add the thread to the list
-    
-    # Wait for all threads to finish before proceeding
-    for thread in threads:
-        thread.join()    
+        request_threads.append(thread)
+        # Create a thread for each piece request 
+        for thread in request_threads:
+            thread.join()
 
 def get_peerport(peer_id, peerlist):
     for peer in peerlist:
