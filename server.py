@@ -16,6 +16,7 @@ def handle_client(client_socket, client_address):
             message = client_socket.recv(4096).decode("utf-8")
             if not message:
                 break
+            print(f"Recieve messege : {message} ")
             data = json.loads(message)
             #response
             if data['action'] == 'introduce':
@@ -24,7 +25,7 @@ def handle_client(client_socket, client_address):
                 peer_id = data['peer_id']
                 peer_ip = data['peer_ip']
                 add_peer(peer_id, peer_name, peer_ip, peer_port)
-                print("Reciece introduce messege")
+                
                 print(f"add {peer_name}, id :{peer_id}, ip :{peer_ip}, port : {peer_port} to connection")
             
             if data['action'] == 'publish':
@@ -50,21 +51,21 @@ def handle_client(client_socket, client_address):
                 peer_ip = data['peer_ip']
                 file_name = data['file_name']
                 
-                metainfo = data.get('metainfo')
                 
-                if not metainfo:
-                    peer_have_file = get_peers_for_file(file_name)
+
+                peer_have_file = get_peers_for_file(file_name)
+                
+                if not peer_have_file:
+                    response = "None"
+                    client_socket.sendall(response.encode())
+                else:    
                     metainfo = getmetainfo(file_name, file_metadata)
+                        
+                    response = {'peer_list' : peer_have_file,
+                                'metainfo' : metainfo}
                     
-                    response = {'peer_list' : peer_have_file,
-                                'metainfo' : metainfo}
                     client_socket.sendall(json.dumps(response).encode()+ b'\n')
-                else:
-                    peer_have_file = get_peers_for_file(get_file_name(metainfo))
-                    response = {'peer_list' : peer_have_file,
-                                'metainfo' : metainfo}
-                    client_socket.sendall(json.dumps(peer_have_file).encode()+ b'\n')
-                                                  
+                
     except Exception as e:
         print(f"Error with {client_address}: {e}")
     finally:

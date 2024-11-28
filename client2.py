@@ -70,7 +70,11 @@ def fetch(sock_peer_server, port, ip, name, id, file_data, file_dir):    #send t
     
     sock_peer_server.sendall(json.dumps(message).encode('utf-8') + b'\n')
     
-    response = sock_peer_server.recv(4096).decode("utf-8")      
+    response = sock_peer_server.recv(4096).decode("utf-8")   
+
+    if response == "None":
+        print("Response from server : No peers have this file. ")
+        return    
     response_data = json.loads(response)
     
     print(response_data)

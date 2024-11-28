@@ -70,9 +70,13 @@ def fetch(sock_peer_server, port, ip, name, id, file_data, file_dir):    #send t
     
     sock_peer_server.sendall(json.dumps(message).encode('utf-8') + b'\n')
     
-    response = sock_peer_server.recv(4096).decode("utf-8")      
-    response_data = json.loads(response)
+    response = sock_peer_server.recv(4096).decode("utf-8")
+    if response == "None":
+        print("Response from server : No peers have this file. ")
+        return 
     
+    response_data = json.loads(response)
+        
     print(response_data)
     
     peerlist = response_data['peer_list']
@@ -81,9 +85,8 @@ def fetch(sock_peer_server, port, ip, name, id, file_data, file_dir):    #send t
     num_pieces = read_metainfo['num_pieces'] #example            
     num_peers = len(peerlist)
     
-    if num_peers == 0:
-        print("Response from server : No peers have this file. ")
-        return 
+    
+        
     if num_peers > 0:
         print(f"Response from server: {num_peers} peer(s) have this file, start download file...")
         
