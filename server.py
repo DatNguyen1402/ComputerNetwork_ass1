@@ -3,9 +3,7 @@ import traceback  # For detailed error reporting
 import threading
 import json
 import sys
-from metainfo import read_metainfo, get_file_name
 from server_data import add_peer, add_shared_file, get_peers_for_file, remove_peer, getmetainfo, peerlist, file_sharing, file_metadata
-
 
 
 
@@ -51,8 +49,6 @@ def handle_client(client_socket, client_address):
                 peer_ip = data['peer_ip']
                 file_name = data['file_name']
                 
-                
-
                 peer_have_file = get_peers_for_file(file_name)
                 
                 if not peer_have_file:
@@ -98,7 +94,4 @@ def server(host, port):
 if __name__ == "__main__":
     host = '0.0.0.0'
     port = 5000
-    # server_thread = threading.Thread(target=server,args=(host, port))
-    # server_thread.start()
-    # sys.exit(0)
     server(host, port)
